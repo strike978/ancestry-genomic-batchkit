@@ -23,8 +23,11 @@ ALLELES_CSV = "andrei_snp.csv"
 def download_file(url, filename):
     if not os.path.isfile(filename):
         print(f"[INFO] Downloading {filename} from {url} ...")
-        urllib.request.urlretrieve(url, filename)
-        print(f"[INFO] Downloaded {filename}.")
+        try:
+            urllib.request.urlretrieve(url, filename)
+            print(f"[INFO] Downloaded {filename}.")
+        except Exception as e:
+            print(f"[ERROR] Failed to download {filename}: {e}")
     else:
         print(f"[INFO] {filename} already exists. Skipping download.")
 
@@ -42,10 +45,16 @@ def collect_all_snp_data(snps_by_chrom, snp_info):
         print(
             f"\n[INFO] Processing chromosome {chrom} ({idx}/{len(snps_by_chrom)}) with {len(positions)} SNPs...")
 
-        vcf_url = VCF_URLS[chrom]
-
+        vcf_url = VCF_URLS.get(chrom)
+        if not vcf_url:
+            print(f"[WARNING] No VCF URL for chromosome {chrom}. Skipping.")
+            continue
         print(f"    [INFO] Fetching data for chr{chrom} from remote VCF...")
-        vcf = pysam.VariantFile(vcf_url)
+        try:
+            vcf = pysam.VariantFile(vcf_url)
+        except Exception as e:
+            print(f"[ERROR] Could not open VCF for chr{chrom}: {e}")
+            continue
 
         for pos_idx, pos in enumerate(positions, 1):
             print(
@@ -61,9 +70,9 @@ def collect_all_snp_data(snps_by_chrom, snp_info):
                 key = (chrom_col, pos_col)
                 if key in snp_info:
                     current_variant = {
-                        'rsid': snp_info[key]['SNP'],
-                        'chrom': chrom_col,
-                        'pos': pos_col,
+                        'rsid': snp_info[key]['rsID'],
+                        'chrom': snp_info[key]['chrom'],
+                        'pos': snp_info[key]['pos'],
                         'ref': ref,
                         'alt': alt
                     }
@@ -112,15 +121,18 @@ def write_sample_files(sample_data, panel_file):
         for line in f:
             if line.strip():
                 parts = line.strip().split('\t')
-                # Map columns by header
                 entry = dict(zip(header, parts))
                 sample_id = entry.get('sample', '')
                 pop = entry.get('pop', '')
                 superpop = entry.get('super_pop', '')
-                pop_info[sample_id] = {'pop': pop, 'superpop': superpop}
+                # Placeholder for coordinates and data source
+                coord = entry.get('coordinates', '')
+                datasource = entry.get('data_source', '')
+                pop_info[sample_id] = {
+                    'pop': pop, 'superpop': superpop, 'coord': coord, 'datasource': datasource}
 
     # Create output directory structure
-    output_dir = "raw_genotype_data"
+    output_dir = "1000genomes"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -146,9 +158,14 @@ def write_sample_files(sample_data, panel_file):
                 # Write sample details at the top
                 pop = pop_info.get(sample_id, {}).get('pop', '')
                 superpop = pop_info.get(sample_id, {}).get('superpop', '')
+                coord = pop_info.get(sample_id, {}).get('coord', '')
+                datasource = pop_info.get(sample_id, {}).get('datasource', '')
                 f.write(f"# Sample : {sample_id}\n")
                 f.write(f"# Population : {pop}\n")
                 f.write(f"# Region : {superpop}\n")
+                f.write(f"# Coordinates : {coord if coord else '-'}\n")
+                f.write(
+                    f"# Data source : {datasource if datasource else '-'}\n")
                 # Write header
                 f.write("# rsid\tchromosome\tposition\tgenotype\n")
 
@@ -195,17 +212,14 @@ def main():
                 "Could not detect chr37/chr38 columns in the CSV header.")
 
         for row in reader:
-            snp_id = row.get('rsID', row.get('SNP', ''))
+            rsid = row['rsID']
             chrom = str(row[chrom_col])
             pos = str(row[pos_col])
             snps_by_chrom[chrom].append(pos)
             snp_info[(chrom, pos)] = {
-                'SNP': snp_id,
-                'Chromosome': chrom,
-                'Position': pos,
-                'Gene': row.get('Gene', ''),
-                'Ancestral_Allele': row.get('Ancestral_Allele', ''),
-                'Derived_Allele': row.get('Derived_Allele', '')
+                'rsID': rsid,
+                'chrom': chrom,
+                'pos': pos
             }
 
     print(
