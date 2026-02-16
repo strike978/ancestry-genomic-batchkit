@@ -1,0 +1,7 @@
+genotypename:   v62.0_HO_public.geno
+snpname:        v62.0_HO_public.snp
+indivname:      v62.0_HO_public.ind
+outputformat:   PACKEDPED
+genotypeoutname: v62.0_HO_public.bed
+snpoutname:      v62.0_HO_public.bim
+indivoutname:    v62.0_HO_public.fam
