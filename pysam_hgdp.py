@@ -14,7 +14,7 @@ HGDP_VCF_URLS = {
     str(i): f"https://ngs.sanger.ac.uk/production/hgdp/hgdp_wgs.20190516/hgdp_wgs.20190516.full.chr{i}.vcf.gz"
     for i in list(range(1, 23)) + ["X", "Y"]
 }
-ALLELES_CSV = "andrei_snp.csv"
+ALLELES_CSV = "merged_snps.csv"
 
 
 def download_hgdp_metadata():

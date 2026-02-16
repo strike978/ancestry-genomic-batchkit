@@ -15,7 +15,7 @@ VCF_URLS = {
     for i in list(range(1, 23)) + ["X", "Y"]
 }
 
-ALLELES_CSV = "andrei_snp.csv"
+ALLELES_CSV = "merged_snps.csv"
 
 # Download panel file if not exists
 
